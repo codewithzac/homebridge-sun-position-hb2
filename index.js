@@ -102,7 +102,7 @@ SunPositionAccessory.prototype.updatePosition = function() {
 		lux = 400;
 	} else if (now > times.sunriseEnd && now <= times.goldenHourEnd) {
 		lux = 20000;
-	} else if (now >= times.goldenHour && times < times.sunsetStart) {
+	} else if (now >= times.goldenHour && now < times.sunsetStart) {
 		lux = 20000;
 	} else if (now >= times.sunsetStart && now <= times.sunset) {
 		lux = 400;

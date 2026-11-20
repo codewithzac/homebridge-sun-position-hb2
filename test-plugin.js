@@ -78,3 +78,72 @@ console.log('PASS: LightSensor service created');
 console.log('PASS: Altitude:', altitude.value);
 console.log('PASS: Azimuth:', azimuth.value);
 
+
+//
+// Regression test: evening golden hour
+//
+
+const suncalc = require('suncalc');
+
+// Use a fixed date so the test is repeatable.
+const testDate = new Date('2026-11-21T02:00:00Z');
+
+const solarTimes = suncalc.getTimes(
+    testDate,
+    -37.81,
+    144.96
+);
+
+// Choose a time halfway between the beginning of
+// evening golden hour and the beginning of sunset.
+const goldenHourTime = new Date(
+    (solarTimes.goldenHour.getTime() +
+     solarTimes.sunsetStart.getTime()) / 2
+);
+
+assert.ok(
+    solarTimes.goldenHour < solarTimes.sunsetStart,
+    'Invalid golden-hour test interval'
+);
+
+// Temporarily replace the clock used by the plugin.
+const OriginalDate = global.Date;
+const originalTimer = global.setTimeout;
+
+global.Date = class extends OriginalDate {
+    constructor(...args) {
+        if (args.length === 0) {
+            super(goldenHourTime.getTime());
+        } else {
+            super(...args);
+        }
+    }
+
+    static now() {
+        return goldenHourTime.getTime();
+    }
+};
+
+// Prevent the plugin from scheduling another update.
+global.setTimeout = () => 0;
+
+try {
+    accessory.updatePosition();
+
+    const lightLevel = lightSensor.getCharacteristic(
+        hap.Characteristic.CurrentAmbientLightLevel
+    ).value;
+
+    assert.equal(
+        lightLevel,
+        20000,
+        'Evening golden hour should report 20000 lux'
+    );
+
+    console.log(
+        'PASS: Evening golden hour reports 20000 lux'
+    );
+} finally {
+    global.Date = OriginalDate;
+    global.setTimeout = originalTimer;
+}
