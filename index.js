@@ -1,49 +1,64 @@
-var inherits = require('util').inherits,
-	suncalc = require('suncalc');
 
-let ALTITUDE_UUID = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
-let AZIMUTH_UUID  = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
+'use strict';
 
-let UpdatePeriod = 5;
+const suncalc = require('suncalc');
+
+const ALTITUDE_UUID = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
+const AZIMUTH_UUID = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
+
+const UpdatePeriod = 5;
+
+let Service;
+let Characteristic;
+let AltitudeCharacteristic;
+let AzimuthCharacteristic;
 
 module.exports = function(homebridge) {
-	Accessory = homebridge.hap.Accessory;
-	Service = homebridge.hap.Service;
-	Characteristic = homebridge.hap.Characteristic;
+    Service = homebridge.hap.Service;
+    Characteristic = homebridge.hap.Characteristic;
 
-	homebridge.registerAccessory('homebridge-sun-position', 'SunPosition', SunPositionAccessory);
+    const { Formats, Units, Perms } = homebridge.hap;
 
-	AltitudeCharacteristic = function() {
-		Characteristic.call(this, 'Altitude', ALTITUDE_UUID);
+    AltitudeCharacteristic = class extends Characteristic {
+        constructor() {
+            super('Altitude', ALTITUDE_UUID);
 
-		this.setProps({
-	    	format: Characteristic.Formats.FLOAT,
-	    	unit: Characteristic.Units.ARC_DEGREE,
-	    	minValue: -90,
-	    	maxValue: 90,
-	    	minStep: 0.1,
-	    	perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY]
-	    });
-		this.value = this.getDefaultValue();
-	}
-	inherits(AltitudeCharacteristic, Characteristic);
+            this.setProps({
+                format: Formats.FLOAT,
+                unit: Units.ARC_DEGREE,
+                minValue: -90,
+                maxValue: 90,
+                minStep: 0.1,
+                perms: [Perms.PAIRED_READ, Perms.NOTIFY]
+            });
 
-	AzimuthCharacteristic = function() {
-		Characteristic.call(this, 'Azimuth', AZIMUTH_UUID);
+            this.value = this.getDefaultValue();
+        }
+    };
 
-		this.setProps({
-	    	format: Characteristic.Formats.FLOAT,
-	    	unit: Characteristic.Units.ARC_DEGREE,
-	    	minValue: 0,
-	    	maxValue: 360,
-	    	minStep: 0.1,
-	    	perms: [Characteristic.Perms.READ, Characteristic.Perms.NOTIFY]
-	    });
-		this.value = this.getDefaultValue();
-	}
-	inherits(AzimuthCharacteristic, Characteristic);
-}
+    AzimuthCharacteristic = class extends Characteristic {
+        constructor() {
+            super('Azimuth', AZIMUTH_UUID);
 
+            this.setProps({
+                format: Formats.FLOAT,
+                unit: Units.ARC_DEGREE,
+                minValue: 0,
+                maxValue: 360,
+                minStep: 0.1,
+                perms: [Perms.PAIRED_READ, Perms.NOTIFY]
+            });
+
+            this.value = this.getDefaultValue();
+        }
+    };
+
+    homebridge.registerAccessory(
+        'homebridge-sun-position',
+        'SunPosition',
+        SunPositionAccessory
+    );
+};
 
 function SunPositionAccessory(log, config) {
 	this.log = log;
