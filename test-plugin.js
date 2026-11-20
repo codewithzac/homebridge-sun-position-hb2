@@ -147,3 +147,107 @@ try {
     global.Date = OriginalDate;
     global.setTimeout = originalTimer;
 }
+
+
+// Configuration validation tests
+
+const validLocation = {
+    lat: -37.81,
+    long: 144.96
+};
+
+for (const invalidPeriod of [
+    0,
+    -1,
+    0.5,
+    1441,
+    '5',
+    NaN,
+    Infinity
+]) {
+    assert.throws(
+        () => new AccessoryConstructor(
+            () => {},
+            {
+                name: 'Invalid Configuration Test',
+                location: validLocation,
+                updatePeriod: invalidPeriod
+            }
+        ),
+        /updatePeriod must be a number between 1 and 1440 minutes/
+    );
+}
+
+const defaultAccessory = new AccessoryConstructor(
+    () => {},
+    {
+        name: 'Default Configuration Test',
+        location: validLocation
+    }
+);
+
+assert.equal(defaultAccessory.updatePeriod, 5);
+
+console.log('PASS: Invalid update intervals are rejected');
+console.log('PASS: Default update interval is 5 minutes');
+
+
+// Timer lifecycle tests
+
+const { EventEmitter } = require('node:events');
+
+const testApi = new EventEmitter();
+const scheduledTimers = [];
+const cancelledTimers = [];
+
+const realSetTimeout = global.setTimeout;
+const realClearTimeout = global.clearTimeout;
+
+global.setTimeout = (callback, delay) => {
+    const timer = { callback, delay };
+    scheduledTimers.push(timer);
+    return timer;
+};
+
+global.clearTimeout = (timer) => {
+    cancelledTimers.push(timer);
+};
+
+try {
+    const timedAccessory = new AccessoryConstructor(
+        () => {},
+        {
+            name: 'Timer Test',
+            location: validLocation,
+            updatePeriod: 5
+        },
+        testApi
+    );
+
+    timedAccessory.getServices();
+
+    assert.equal(scheduledTimers.length, 1);
+    assert.equal(scheduledTimers[0].delay, 300000);
+
+    console.log('PASS: Update scheduled after 5 minutes');
+
+    // Simulate Homebridge shutting down.
+    testApi.emit('shutdown');
+
+    assert.equal(cancelledTimers.length, 1);
+    assert.equal(cancelledTimers[0], scheduledTimers[0]);
+    assert.equal(timedAccessory.updateTimer, null);
+    assert.equal(timedAccessory.stopped, true);
+
+    console.log('PASS: Timer cancelled on shutdown');
+
+    // Confirm no new update is scheduled after shutdown.
+    timedAccessory.updatePosition();
+
+    assert.equal(scheduledTimers.length, 1);
+
+    console.log('PASS: No updates scheduled after shutdown');
+} finally {
+    global.setTimeout = realSetTimeout;
+    global.clearTimeout = realClearTimeout;
+}

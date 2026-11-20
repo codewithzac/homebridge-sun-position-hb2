@@ -60,7 +60,7 @@ module.exports = function(homebridge) {
     );
 };
 
-function SunPositionAccessory(log, config) {
+function SunPositionAccessory(log, config, api) {
 	this.log = log;
 	this.config = config;
 	this.name = config.name;
@@ -69,8 +69,38 @@ function SunPositionAccessory(log, config) {
 		throw new Error("Missing or invalid location configuration");
 
 	this.location = config.location;
-	this.updatePeriod = config.updatePeriod || UpdatePeriod;
+
+    const updatePeriod = config.updatePeriod ?? UpdatePeriod;
+
+    if (
+        typeof updatePeriod !== 'number' ||
+        !Number.isFinite(updatePeriod) ||
+        updatePeriod < 1 ||
+        updatePeriod > 1440
+    ) {
+        throw new Error(
+            'updatePeriod must be a number between 1 and 1440 minutes'
+        );
+    }
+
+    this.updatePeriod = updatePeriod;
+
+    this.updateTimer = null;
+    this.stopped = false;
+
+    if (api && typeof api.on === 'function') {
+        api.on('shutdown', () => this.stop());
+    }
 }
+
+SunPositionAccessory.prototype.stop = function() {
+    this.stopped = true;
+
+    if (this.updateTimer !== null) {
+        clearTimeout(this.updateTimer);
+        this.updateTimer = null;
+    }
+};
 
 SunPositionAccessory.prototype.identify = function(callback) {
 	this.log("Identify");
@@ -93,7 +123,11 @@ SunPositionAccessory.prototype.getServices = function() {
 }
 
 SunPositionAccessory.prototype.updatePosition = function() {
-	var now = new Date();
+    if (this.stopped) {
+        return;
+    }
+
+    var now = new Date();
 	var times = suncalc.getTimes(now, this.location.lat, this.location.long);
 
 	// Arbitrary lux values for times.
@@ -126,5 +160,8 @@ SunPositionAccessory.prototype.updatePosition = function() {
 	this.service.setCharacteristic(AltitudeCharacteristic, altitude);
 	this.service.setCharacteristic(AzimuthCharacteristic, azimuth);
 
-	setTimeout(this.updatePosition.bind(this), this.updatePeriod * 60 * 1000);
+    this.updateTimer = setTimeout(() => {
+        this.updateTimer = null;
+        this.updatePosition();
+    }, this.updatePeriod * 60 * 1000);
 }
