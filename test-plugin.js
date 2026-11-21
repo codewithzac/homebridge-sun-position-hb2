@@ -14,6 +14,7 @@ let AccessoryConstructor;
 const mockApi = {
     hap,
     registerAccessory(pluginName, accessoryName, constructor) {
+        assert.equal(pluginName, 'homebridge-sun-position-hb2');
         assert.equal(accessoryName, 'SunPosition');
         AccessoryConstructor = constructor;
     }

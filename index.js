@@ -54,7 +54,7 @@ module.exports = function(homebridge) {
     };
 
     homebridge.registerAccessory(
-        'homebridge-sun-position',
+        'homebridge-sun-position-hb2',
         'SunPosition',
         SunPositionAccessory
     );
