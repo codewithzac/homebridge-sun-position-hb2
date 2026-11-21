@@ -22,5 +22,8 @@
   },
   "devDependencies": {
     "homebridge": "^2.5.0"
+  },
+  "scripts": {
+    "test": "node --check index.js && node --check test-plugin.js && node test-plugin.js"
   }
 }
