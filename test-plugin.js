@@ -52,6 +52,24 @@ try {
 
 assert.equal(services.length, 2);
 
+const information = services.find(
+    service => service.UUID === hap.Service.AccessoryInformation.UUID
+);
+
+assert.ok(information, 'AccessoryInformation service not found');
+
+assert.equal(
+    information.getCharacteristic(hap.Characteristic.Manufacturer).value,
+    'github.com codewithzac'
+);
+
+assert.equal(
+    information.getCharacteristic(hap.Characteristic.FirmwareRevision).value,
+    require('./package.json').version
+);
+
+console.log('PASS: Manufacturer and firmware metadata are correct');
+
 const lightSensor = services.find(
     service => service.UUID === hap.Service.LightSensor.UUID
 );

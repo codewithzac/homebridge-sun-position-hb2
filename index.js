@@ -2,6 +2,7 @@
 'use strict';
 
 const suncalc = require('suncalc');
+const { version } = require('./package.json');
 
 const ALTITUDE_UUID = 'a8af30e7-5c8e-43bf-bb21-3c1343229260';
 const AZIMUTH_UUID = 'ace1dd10-2e46-4100-a74a-cc77f13f1bab';
@@ -122,19 +123,30 @@ SunPositionAccessory.prototype.identify = function(callback) {
 }
 
 SunPositionAccessory.prototype.getServices = function() {
-	this.informationService = new Service.AccessoryInformation();
-	this.informationService
-		.setCharacteristic(Characteristic.Manufacturer, "github.com keybuk")
-		.setCharacteristic(Characteristic.Model, "Sun Position")
+    this.informationService = new Service.AccessoryInformation();
 
-    this.service = new Service.LightSensor("Sun");
+    this.informationService
+        .setCharacteristic(
+            Characteristic.Manufacturer,
+            'github.com codewithzac'
+        )
+        .setCharacteristic(
+            Characteristic.Model,
+            'Sun Position'
+        )
+        .setCharacteristic(
+            Characteristic.FirmwareRevision,
+            version
+        );
+
+    this.service = new Service.LightSensor('Sun');
     this.service.addCharacteristic(AltitudeCharacteristic);
     this.service.addCharacteristic(AzimuthCharacteristic);
 
     this.updatePosition();
 
     return [this.informationService, this.service];
-}
+};
 
 SunPositionAccessory.prototype.updatePosition = function() {
     if (this.stopped) {

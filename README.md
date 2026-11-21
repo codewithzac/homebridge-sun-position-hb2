@@ -79,7 +79,7 @@ To migrate:
 5. Retain your existing accessory configuration.
 6. Restart Homebridge and verify the accessory and its automations.
 
-**Important:** Migration from an existing paired installation has not yet been fully verified. Preserving characteristic UUIDs does not guarantee that all HomeKit automations will survive migration.
+**Important:** Migration from an existing paired installation will likely require that you reconfigure any automations. Preserving characteristic UUIDs does not guarantee that all HomeKit automations will survive migration.
 
 Do not run both versions simultaneously.
 
