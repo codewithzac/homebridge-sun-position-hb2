@@ -264,3 +264,51 @@ try {
     global.setTimeout = realSetTimeout;
     global.clearTimeout = realClearTimeout;
 }
+
+// Location validation tests
+
+const invalidLocations = [
+    { lat: 91, long: 144.96 },
+    { lat: -91, long: 144.96 },
+    { lat: -37.81, long: 181 },
+    { lat: -37.81, long: -181 },
+    { lat: 'Melbourne', long: 144.96 },
+    { lat: NaN, long: 144.96 },
+    { lat: Infinity, long: 144.96 },
+    { lat: -37.81 },
+    null
+];
+
+for (const location of invalidLocations) {
+    assert.throws(
+        () => new AccessoryConstructor(
+            () => {},
+            {
+                name: 'Invalid Location Test',
+                location
+            }
+        ),
+        /Invalid location/
+    );
+}
+
+const validBoundaryLocations = [
+    { lat: 90, long: 180 },
+    { lat: -90, long: -180 },
+    { lat: 0, long: 0 }
+];
+
+for (const location of validBoundaryLocations) {
+    assert.doesNotThrow(
+        () => new AccessoryConstructor(
+            () => {},
+            {
+                name: 'Valid Location Test',
+                location
+            }
+        )
+    );
+}
+
+console.log('PASS: Invalid geographic coordinates are rejected');
+console.log('PASS: Valid geographic coordinates are accepted');

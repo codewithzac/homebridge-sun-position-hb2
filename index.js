@@ -65,8 +65,22 @@ function SunPositionAccessory(log, config, api) {
 	this.config = config;
 	this.name = config.name;
 
-	if (!config.location || !Number.isFinite(config.location.lat) || !Number.isFinite(config.location.long))
-		throw new Error("Missing or invalid location configuration");
+    if (
+        !config.location ||
+        typeof config.location.lat !== 'number' ||
+        typeof config.location.long !== 'number' ||
+        !Number.isFinite(config.location.lat) ||
+        !Number.isFinite(config.location.long) ||
+        config.location.lat < -90 ||
+        config.location.lat > 90 ||
+        config.location.long < -180 ||
+        config.location.long > 180
+    ) {
+        throw new Error(
+            'Invalid location: latitude must be between -90 and 90, ' +
+            'and longitude must be between -180 and 180'
+        );
+    }
 
 	this.location = config.location;
 
@@ -155,9 +169,13 @@ SunPositionAccessory.prototype.updatePosition = function() {
 	var altitude = position.altitude * 180 / Math.PI;
 	var azimuth = (position.azimuth * 180 / Math.PI + 180) % 360;
 
-	this.log("Sun is " + altitude + " high at " + azimuth);
+    if (typeof this.log.debug === 'function') {
+        this.log.debug(
+            `Sun altitude: ${altitude.toFixed(1)}°, azimuth: ${azimuth.toFixed(1)}°`
+        );
+    }
 
-	this.service.setCharacteristic(AltitudeCharacteristic, altitude);
+    this.service.setCharacteristic(AltitudeCharacteristic, altitude);
 	this.service.setCharacteristic(AzimuthCharacteristic, azimuth);
 
     this.updateTimer = setTimeout(() => {
