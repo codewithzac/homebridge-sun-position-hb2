@@ -162,7 +162,36 @@ SunPositionAccessory.prototype.updatePosition = function() {
 		lux = 100000;
 	}
 
-	this.service.setCharacteristic(Characteristic.CurrentAmbientLightLevel, lux);
+    // Polar-day/night fallback:
+    // SunCalc returns invalid sunrise/sunset dates when the sun
+    // remains above or below the horizon throughout the day.
+    // In those cases, estimate light levels from solar altitude.
+    const hasValidSunrise = Number.isFinite(times.sunrise.getTime());
+    const hasValidSunset = Number.isFinite(times.sunset.getTime());
+
+    if (!hasValidSunrise || !hasValidSunset) {
+        const solarPosition = suncalc.getPosition(
+            now,
+            this.location.lat,
+            this.location.long
+        );
+
+        const solarAltitude = solarPosition.altitude * 180 / Math.PI;
+
+        if (solarAltitude >= 6) {
+            lux = 100000;
+        } else if (solarAltitude >= 0) {
+            lux = 20000;
+        } else if (solarAltitude >= -6) {
+            lux = 400;
+        } else if (solarAltitude >= -18) {
+            lux = 40;
+        } else {
+            lux = 0.0001;
+        }
+    }
+
+    this.service.setCharacteristic(Characteristic.CurrentAmbientLightLevel, lux);
 
 
 	var position = suncalc.getPosition(now, this.location.lat, this.location.long);

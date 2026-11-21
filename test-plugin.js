@@ -533,3 +533,155 @@ for (const dateString of [
         `— calculations completed`
     );
 }
+
+// Nighttime and twilight regression tests
+
+const nightTestLocation = {
+    name: 'Melbourne',
+    lat: -37.81,
+    long: 144.96
+};
+
+const nightTestDate = new Date('2026-01-15T01:00:00Z');
+
+const nightTimes = suncalc.getTimes(
+    nightTestDate,
+    nightTestLocation.lat,
+    nightTestLocation.long
+);
+
+const nightTestCases = [
+    {
+        name: 'Evening twilight',
+        date: solarMidpoint(
+            nightTimes.sunset,
+            nightTimes.night
+        ),
+        expected: 40
+    },
+    {
+        name: 'Morning twilight',
+        date: solarMidpoint(
+            nightTimes.nightEnd,
+            nightTimes.sunrise
+        ),
+        expected: 40
+    },
+    {
+        name: 'Midnight',
+        // Midnight AEDT, 16 January 2026
+        date: new Date('2026-01-15T13:00:00Z'),
+        expected: 0.0001
+    }
+];
+
+for (const test of nightTestCases) {
+    const result = solarReadingAt(
+        nightTestLocation,
+        test.date
+    );
+
+    assert.equal(
+        result.lux,
+        test.expected,
+        `${test.name}: expected ${test.expected} lux, ` +
+        `received ${result.lux}`
+    );
+
+    console.log(
+        `PASS: ${test.name} reports ${result.lux} lux`
+    );
+}
+
+// Polar-day regression test
+
+const polarSummerLocation = {
+    name: 'Tromso',
+    lat: 69.65,
+    long: 18.96
+};
+
+// Around local midnight during the midnight-sun season.
+const polarSummerDate = new Date('2026-06-21T22:00:00Z');
+
+const polarSummerReading = solarReadingAt(
+    polarSummerLocation,
+    polarSummerDate
+);
+
+// The sun should still be above the horizon.
+assert.ok(
+    polarSummerReading.altitude > 0,
+    'Expected the sun to be above the horizon'
+);
+
+// A sunlit polar night should not report complete darkness.
+assert.ok(
+    polarSummerReading.lux > 0.0001,
+    'Midnight sun should not report the nighttime fallback lux'
+);
+
+console.log(
+    'PASS: Midnight sun does not report complete darkness'
+);
+
+// Polar-night regression test
+
+// Around local midday during the polar-night season.
+const polarWinterDate = new Date('2026-12-21T11:00:00Z');
+
+const polarWinterReading = solarReadingAt(
+    polarSummerLocation,
+    polarWinterDate
+);
+
+// In Tromso in December, the sun remains below the horizon.
+assert.ok(
+    polarWinterReading.altitude < 0,
+    'Expected the sun to remain below the horizon'
+);
+
+// At midday there should still be some twilight.
+// The sun is below the horizon, but not far enough
+// below it to produce complete darkness.
+assert.ok(
+    polarWinterReading.lux > 0.0001,
+    'Polar winter midday should report twilight'
+);
+
+assert.ok(
+    polarWinterReading.lux <= 400,
+    'Polar winter midday should not report daylight'
+);
+
+console.log(
+    'PASS: Polar winter midday reports twilight'
+);
+
+//
+// Polar winter midnight regression test
+//
+
+// Midnight in Tromso on 22 December 2026
+// (23:00 UTC on 21 December).
+const polarWinterMidnight = new Date('2026-12-21T23:00:00Z');
+
+const polarMidnightReading = solarReadingAt(
+    polarSummerLocation,
+    polarWinterMidnight
+);
+
+assert.ok(
+    polarMidnightReading.altitude < -18,
+    'Expected the sun below astronomical twilight'
+);
+
+assert.equal(
+    polarMidnightReading.lux,
+    0.0001,
+    'Polar winter midnight should report darkness'
+);
+
+console.log(
+    'PASS: Polar winter midnight reports darkness'
+);
