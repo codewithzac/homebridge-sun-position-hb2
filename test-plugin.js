@@ -231,11 +231,24 @@ try {
 
     console.log('PASS: Update scheduled after 5 minutes');
 
+    // Simulate the first five-minute timer firing.
+    scheduledTimers[0].callback();
+
+    // The plugin should schedule another update.
+    assert.equal(scheduledTimers.length, 2);
+    assert.equal(scheduledTimers[1].delay, 300000);
+    assert.equal(
+        timedAccessory.updateTimer,
+        scheduledTimers[1]
+    );
+
+    console.log('PASS: Timer schedules recurring updates');
+
     // Simulate Homebridge shutting down.
     testApi.emit('shutdown');
 
     assert.equal(cancelledTimers.length, 1);
-    assert.equal(cancelledTimers[0], scheduledTimers[0]);
+    assert.equal(cancelledTimers[0], scheduledTimers[1]);
     assert.equal(timedAccessory.updateTimer, null);
     assert.equal(timedAccessory.stopped, true);
 
@@ -244,7 +257,7 @@ try {
     // Confirm no new update is scheduled after shutdown.
     timedAccessory.updatePosition();
 
-    assert.equal(scheduledTimers.length, 1);
+    assert.equal(scheduledTimers.length, 2);
 
     console.log('PASS: No updates scheduled after shutdown');
 } finally {
