@@ -26,5 +26,10 @@
   "scripts": {
     "test": "node --check index.js && node --check test-plugin.js && node test-plugin.js"
   },
-  "homepage": "https://github.com/codewithzac/homebridge-sun-position-hb2#readme"
+  "homepage": "https://github.com/codewithzac/homebridge-sun-position-hb2#readme",
+  "files": [
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ]
 }
