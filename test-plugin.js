@@ -312,3 +312,224 @@ for (const location of validBoundaryLocations) {
 
 console.log('PASS: Invalid geographic coordinates are rejected');
 console.log('PASS: Valid geographic coordinates are accepted');
+
+//
+// International solar calculation tests
+//
+
+// Run a fresh accessory at a simulated date and location.
+// This avoids altering the existing test accessory.
+function solarReadingAt(location, date) {
+    const RealDate = global.Date;
+    const realTimeout = global.setTimeout;
+
+    global.Date = class extends RealDate {
+        constructor(...args) {
+            super(...(args.length ? args : [date.getTime()]));
+        }
+
+        static now() {
+            return date.getTime();
+        }
+    };
+
+    // Don't schedule real timers during tests.
+    global.setTimeout = () => 0;
+
+    try {
+        const testAccessory = new AccessoryConstructor(
+            () => {},
+            {
+                name: 'International Solar Test',
+                location: {
+                    lat: location.lat,
+                    long: location.long
+                }
+            }
+        );
+
+        const services = testAccessory.getServices();
+
+        const sensor = services.find(
+            service => service.UUID === hap.Service.LightSensor.UUID
+        );
+
+        assert.ok(sensor, 'LightSensor service missing');
+
+        return {
+            lux: sensor.getCharacteristic(
+                hap.Characteristic.CurrentAmbientLightLevel
+            ).value,
+            altitude: sensor.characteristics.find(
+                c => c.UUID ===
+                    'a8af30e7-5c8e-43bf-bb21-3c1343229260'
+            ).value,
+            azimuth: sensor.characteristics.find(
+                c => c.UUID ===
+                    'ace1dd10-2e46-4100-a74a-cc77f13f1bab'
+            ).value
+        };
+    } finally {
+        global.Date = RealDate;
+        global.setTimeout = realTimeout;
+    }
+}
+
+// Calculate a point halfway between two events.
+function solarMidpoint(start, end) {
+    assert.ok(
+        Number.isFinite(start.getTime()) &&
+        Number.isFinite(end.getTime()) &&
+        start < end,
+        'Invalid solar event interval'
+    );
+
+    return new Date(
+        (start.getTime() + end.getTime()) / 2
+    );
+}
+
+// Each reference date is approximately local noon.
+// This keeps SunCalc calculations on the intended day.
+const internationalLocations = [
+    {
+        name: 'Melbourne',
+        lat: -37.81,
+        long: 144.96,
+        dates: [
+            '2026-01-15T01:00:00Z',
+            '2026-07-15T02:00:00Z'
+        ]
+    },
+    {
+        name: 'London',
+        lat: 51.51,
+        long: -0.13,
+        dates: [
+            '2026-01-15T12:00:00Z',
+            '2026-07-15T11:00:00Z'
+        ]
+    },
+    {
+        name: 'Singapore',
+        lat: 1.35,
+        long: 103.82,
+        dates: [
+            '2026-01-15T04:00:00Z',
+            '2026-07-15T04:00:00Z'
+        ]
+    }
+];
+
+for (const location of internationalLocations) {
+    for (const dateString of location.dates) {
+        const referenceDate = new Date(dateString);
+
+        const times = suncalc.getTimes(
+            referenceDate,
+            location.lat,
+            location.long
+        );
+
+        const cases = [
+            {
+                phase: 'Sunrise',
+                date: solarMidpoint(
+                    times.sunrise,
+                    times.sunriseEnd
+                ),
+                expected: 400
+            },
+            {
+                phase: 'Morning golden hour',
+                date: solarMidpoint(
+                    times.sunriseEnd,
+                    times.goldenHourEnd
+                ),
+                expected: 20000
+            },
+            {
+                phase: 'Midday',
+                date: times.solarNoon,
+                expected: 100000
+            },
+            {
+                phase: 'Evening golden hour',
+                date: solarMidpoint(
+                    times.goldenHour,
+                    times.sunsetStart
+                ),
+                expected: 20000
+            },
+            {
+                phase: 'Sunset',
+                date: solarMidpoint(
+                    times.sunsetStart,
+                    times.sunset
+                ),
+                expected: 400
+            }
+        ];
+
+        for (const test of cases) {
+            const result = solarReadingAt(
+                location,
+                test.date
+            );
+
+            assert.equal(
+                result.lux,
+                test.expected,
+                `${location.name}, ${dateString}, ` +
+                `${test.phase}: expected ${test.expected} lux, ` +
+                `received ${result.lux}`
+            );
+
+            assert.ok(Number.isFinite(result.altitude));
+            assert.ok(Number.isFinite(result.azimuth));
+
+            console.log(
+                `PASS: ${location.name} ` +
+                `${dateString.slice(0, 10)} — ${test.phase}`
+            );
+        }
+    }
+}
+
+// Polar regions require special consideration.
+// For now, check that sun-position calculations are finite.
+const polarLocation = {
+    name: 'Tromso',
+    lat: 69.65,
+    long: 18.96
+};
+
+for (const dateString of [
+    '2026-06-21T10:00:00Z',
+    '2026-12-21T10:00:00Z'
+]) {
+    const result = solarReadingAt(
+        polarLocation,
+        new Date(dateString)
+    );
+
+    assert.ok(
+        Number.isFinite(result.altitude),
+        'Polar altitude should be finite'
+    );
+
+    assert.ok(
+        Number.isFinite(result.azimuth),
+        'Polar azimuth should be finite'
+    );
+
+    assert.ok(
+        Number.isFinite(result.lux),
+        'Polar light level should be finite'
+    );
+
+    console.log(
+        `PASS: Tromso ${dateString.slice(0, 10)} ` +
+        `— calculations completed`
+    );
+}
